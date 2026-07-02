@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>DynoCommandPC</RootNamespace>
+    <AssemblyName>DynoCommandPC</AssemblyName>
+    <LangVersion>latest</LangVersion>
+    <ApplicationIcon>CommandModule.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Embedded so windows can use it as their runtime Icon (taskbar/title bar). -->
+    <Resource Include="CommandModule.ico" />
+  </ItemGroup>
+
+</Project>
