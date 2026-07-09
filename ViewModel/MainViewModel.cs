@@ -21,8 +21,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
         _settings = SettingsStore.Load();
         ApplySettings();
 
-        // Startup default target: 50 km/h (expressed in the active unit).
-        _ctrl.Command.RequestedSpeed = Math.Min(_ctrl.Command.FromKph(50.0), _settings.MaxForCurrentUnit());
+        // Startup default target: 80 km/h (expressed in the active unit).
+        _ctrl.Command.RequestedSpeed = Math.Min(_ctrl.Command.FromKph(80.0), _settings.MaxForCurrentUnit());
 
         ConnectCommand    = new RelayCommand(Connect, () => !IsConnected);
         DisconnectCommand = new RelayCommand(Disconnect, () => IsConnected);
@@ -31,6 +31,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         ToggleBrakeCommand = new RelayCommand(ToggleBrake);
         AdvancedCycleCommand = new RelayCommand(() => RunCycle(basic: false));
         BasicCycleCommand    = new RelayCommand(() => RunCycle(basic: true));
+        CancelRampCommand    = new RelayCommand(CancelRamp);
         NudgeSpeedCommand = new RelayCommand(p => TargetSpeed += SpeedStep((string)p!));
         NudgeLoadCommand  = new RelayCommand(p => TargetLoad  += double.Parse((string)p!));
         NudgeRampCommand  = new RelayCommand(p => RampRate    += double.Parse((string)p!));
@@ -62,6 +63,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public RelayCommand ToggleBrakeCommand { get; }
     public RelayCommand AdvancedCycleCommand { get; }
     public RelayCommand BasicCycleCommand { get; }
+    public RelayCommand CancelRampCommand { get; }
     public RelayCommand NudgeSpeedCommand { get; }
     public RelayCommand NudgeLoadCommand { get; }
     public RelayCommand NudgeRampCommand { get; }
@@ -216,7 +218,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     // ---- command (requested) ----
     public string ModeText => _inRampRun
-        ? $"{(_runIsBasic ? "Basic" : "Advanced")} — {ActiveSeq[_rampStep].State}"
+        ? $"{(_runIsBasic ? "Manual Ramp" : "Advanced")} — {ActiveSeq[_rampStep].State}"
         : _ctrl.Command.Mode.ToString();
 
     private void SetMode(DynoMode m)
@@ -232,18 +234,20 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public string BrakeButtonText => IsBrakeOn ? "Brake: ON" : _brakePending ? "Brake: armed (<5)" : "Brake";
 
     // ---- Ramp runs: one cycling button per run type (mirrors the original) ----
-    // Advanced: Hold(start) -> Ramp Up -> Hold(finish) -> Ramp Down -> off.
-    // Basic:    Hold(start) -> Ramp Up -> Hold(finish) -> off (no ramp-down; coasts).
+    // The first step drives to the configured StartSpeed via Speed mode (the normal
+    // Knob/Speed path — the protocol has no dedicated start-speed packet), then:
+    // Advanced: Speed(start) -> Ramp Up -> Hold(finish) -> Ramp Down -> off.
+    // Basic:    Speed(start) -> Ramp Up -> Hold(finish) -> off (no ramp-down; coasts).
     private static readonly (DynoMode Mode, string Next, string State)[] AdvancedSeq =
     {
-        (DynoMode.RampHold, "Ramp Up",           "Hold (start speed)"),
+        (DynoMode.Speed,    "Ramp Up",           "Drive to start speed"),
         (DynoMode.RampUp,   "Hold (finish run)", "Ramping up"),
         (DynoMode.RampHold, "Ramp Down",         "Hold (run finished)"),
         (DynoMode.RampDown, "End (free spin)",   "Ramping down"),
     };
     private static readonly (DynoMode Mode, string Next, string State)[] BasicSeq =
     {
-        (DynoMode.RampHold, "Ramp Up",            "Hold (start speed)"),
+        (DynoMode.Speed,    "Ramp Up",            "Drive to start speed"),
         (DynoMode.RampUp,   "Hold (finish run)",  "Ramping up"),
         (DynoMode.RampHold, "End (free spin)",    "Hold (run finished)"),
     };
@@ -254,7 +258,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private bool _runIsBasic;
 
     public string AdvancedButtonText => (_inRampRun && !_runIsBasic) ? AdvancedSeq[_rampStep].Next : "Advanced ▶";
-    public string BasicButtonText    => (_inRampRun &&  _runIsBasic) ? BasicSeq[_rampStep].Next    : "Basic ▶";
+    public string BasicButtonText    => (_inRampRun &&  _runIsBasic) ? BasicSeq[_rampStep].Next    : "Manual Ramp";
     public string AdvancedActiveTag  => (_inRampRun && !_runIsBasic) ? "ACTIVE" : "";
     public string BasicActiveTag     => (_inRampRun &&  _runIsBasic) ? "ACTIVE" : "";
 
@@ -266,7 +270,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
         {
             _inRampRun = true;
             _runIsBasic = basic;
-            _rampStep = 0; // first press locks start speed (Hold)
+            _rampStep = 0; // first press: drive to the configured start speed (Speed mode)
+            _ctrl.Command.RequestedSpeed = Math.Min(_ctrl.Command.StartSpeed, _settings.MaxForCurrentUnit());
+            OnPropertyChanged(nameof(TargetSpeed));
         }
         else if (_rampStep >= seq.Length - 1)
         {
@@ -283,6 +289,16 @@ public sealed class MainViewModel : INotifyPropertyChanged
         RaiseModeUi();
     }
 
+    /// <summary>Abort an in-progress ramp run and return to the main mode screen (coast / No Load).</summary>
+    private void CancelRamp()
+    {
+        _inRampRun = false;
+        _brakePending = false;
+        _ctrl.Command.Mode = DynoMode.NoLoad;
+        RaiseModeUi();
+        Beep();
+    }
+
     private void ToggleBrake()
     {
         _inRampRun = false;
@@ -296,7 +312,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
                 _ctrl.Command.BrakeClearRequests = 6; // pulse Speed bit ~0.3 s to clear the PC brake warning
             }
         }
-        else if (_ctrl.State.SpeedKph < 5.0)
+        else if (_ctrl.State.SpeedKph < BrakeEngageMaxKph)
         {
             _ctrl.Command.Mode = DynoMode.Brake; // safe to engage now
         }
@@ -329,6 +345,22 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public bool ShowBed => _ctrl.Command.Mode == DynoMode.SetBed && _ctrl.Command.Is4Wd;
     public bool Show4WdFeatures => _ctrl.Command.Is4Wd;
 
+    // While a Manual Ramp / Advanced ramp cycle is running, the rest of the mode
+    // panel is hidden so the operator steps the run through to completion without
+    // fumbling into another mode. Only the active cycling button stays visible;
+    // when the cycle ends (returns to No Load) every button reappears.
+    public bool ShowModeButtons => !_inRampRun;                       // No Load / Speed / Load / Hands-free
+    public bool ShowManualRampButton => !_inRampRun || _runIsBasic;   // idle, or the active basic run
+    public bool ShowAdvancedButton   => !_inRampRun || !_runIsBasic;  // idle, or the active advanced run
+    public bool ShowSetBedButton => _ctrl.Command.Is4Wd && !_inRampRun;
+    public bool ShowRampCancel => _inRampRun;                         // abort button, only during a run
+
+    // Brake is only offered when it can actually engage (at/below the interlock
+    // speed), or while already engaged so it can be released. This also keeps it
+    // hidden during a high-speed ramp and brings it back once the roller slows.
+    private const double BrakeEngageMaxKph = 5.0;
+    public bool ShowBrakeButton => IsBrakeOn || _ctrl.State.SpeedKph < BrakeEngageMaxKph;
+
     private void RaiseVisibility()
     {
         OnPropertyChanged(nameof(ShowLoad));
@@ -336,6 +368,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(ShowBed));
         OnPropertyChanged(nameof(Show4WdFeatures));
         OnPropertyChanged(nameof(ShowBalance));
+        OnPropertyChanged(nameof(ShowModeButtons));
+        OnPropertyChanged(nameof(ShowManualRampButton));
+        OnPropertyChanged(nameof(ShowAdvancedButton));
+        OnPropertyChanged(nameof(ShowSetBedButton));
+        OnPropertyChanged(nameof(ShowBrakeButton));
+        OnPropertyChanged(nameof(ShowRampCancel));
     }
 
     private void RaiseModeUi()
@@ -473,7 +511,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         var s = _ctrl.State;
 
         // Auto-engage an armed brake once the dyno has slowed below 5 km/h.
-        if (_brakePending && s.SpeedKph < 5.0)
+        if (_brakePending && s.SpeedKph < BrakeEngageMaxKph)
         {
             _brakePending = false;
             _ctrl.Command.Mode = DynoMode.Brake;
@@ -544,6 +582,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
             nameof(HandsfreeState), nameof(TxCount), nameof(RxCount), nameof(ErrCount),
             nameof(CommsLosses),
             nameof(LastTx), nameof(LastRx), nameof(LinkAge), nameof(LogText), nameof(RawText), nameof(InspectorText), nameof(BrakeButtonText),
+            nameof(ShowBrakeButton),
             nameof(IsShootoutActive), nameof(RampUnlocked), nameof(ShootoutBanner),
             nameof(BedActual), nameof(BedTarget), nameof(TransmissionText), nameof(In4wdText), nameof(DeviceStatus),
             nameof(ShowBalance), nameof(Show4WdFeatures), nameof(ShowBed)

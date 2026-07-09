@@ -154,21 +154,31 @@
                                 </Style>
                             </WrapPanel.Resources>
                             <Button Content="No Load"   Command="{Binding SetModeCommand}" CommandParameter="NoLoad"
+                                    Visibility="{Binding ShowModeButtons, Converter={StaticResource B2V}}"
                                     Background="{Binding ModeText, Converter={StaticResource ModeBrush}, ConverterParameter=NoLoad}"/>
                             <Button Content="Speed"     Command="{Binding SetModeCommand}" CommandParameter="Speed"
+                                    Visibility="{Binding ShowModeButtons, Converter={StaticResource B2V}}"
                                     Background="{Binding ModeText, Converter={StaticResource ModeBrush}, ConverterParameter=Speed}"/>
                             <Button Content="Load"      Command="{Binding SetModeCommand}" CommandParameter="Load"
+                                    Visibility="{Binding ShowModeButtons, Converter={StaticResource B2V}}"
                                     Background="{Binding ModeText, Converter={StaticResource ModeBrush}, ConverterParameter=Load}"/>
                             <Button Content="{Binding BasicButtonText}" Command="{Binding BasicCycleCommand}"
+                                    Visibility="{Binding ShowManualRampButton, Converter={StaticResource B2V}}"
                                     Background="{Binding BasicActiveTag, Converter={StaticResource ModeBrush}, ConverterParameter=ACTIVE}"/>
                             <Button Content="{Binding AdvancedButtonText}" Command="{Binding AdvancedCycleCommand}"
+                                    Visibility="{Binding ShowAdvancedButton, Converter={StaticResource B2V}}"
                                     Background="{Binding AdvancedActiveTag, Converter={StaticResource ModeBrush}, ConverterParameter=ACTIVE}"/>
+                            <Button Content="Cancel" Command="{Binding CancelRampCommand}"
+                                    Visibility="{Binding ShowRampCancel, Converter={StaticResource B2V}}"
+                                    Background="#5A2E2E"/>
                             <Button Content="Hands-free" Command="{Binding SetModeCommand}" CommandParameter="Handsfree"
+                                    Visibility="{Binding ShowModeButtons, Converter={StaticResource B2V}}"
                                     Background="{Binding ModeText, Converter={StaticResource ModeBrush}, ConverterParameter=Handsfree}"/>
                             <Button Content="Set Bed"   Command="{Binding SetModeCommand}" CommandParameter="SetBed"
-                                    Visibility="{Binding Show4WdFeatures, Converter={StaticResource B2V}}"
+                                    Visibility="{Binding ShowSetBedButton, Converter={StaticResource B2V}}"
                                     Background="{Binding ModeText, Converter={StaticResource ModeBrush}, ConverterParameter=SetBed}"/>
                             <Button Content="{Binding BrakeButtonText}" Command="{Binding ToggleBrakeCommand}"
+                                    Visibility="{Binding ShowBrakeButton, Converter={StaticResource B2V}}"
                                     Background="{Binding ModeText, Converter={StaticResource ModeBrush}, ConverterParameter=Brake}"/>
                         </WrapPanel>
 
