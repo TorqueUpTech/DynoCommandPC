@@ -17,4 +17,14 @@
     <Resource Include="CommandModule.ico" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Dyno Dynamics DynoServer client library (net48; loads cleanly under .NET 8 — it's pure
+         sockets/threads). Reused verbatim like the feeder does, to speak the DynoServer network
+         as the handheld (DynoServerTransport). -->
+    <Reference Include="DynoDotNet">
+      <HintPath>libs\DynoDotNet.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
+
 </Project>

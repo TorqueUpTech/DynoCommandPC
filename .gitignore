@@ -15,6 +15,13 @@ obj/
 settings.json
 logs/
 
+# Captured comms traces
+dyno-capture-*.txt
+
+# Dyno Dynamics' proprietary client library — not ours to redistribute.
+# Drop DynoDotNet.dll in here to build (see README).
+libs/
+
 # OS
 Thumbs.db
 .DS_Store

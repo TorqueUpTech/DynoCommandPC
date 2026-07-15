@@ -103,7 +103,20 @@ public sealed class MainViewModel : INotifyPropertyChanged
         Status = "Connecting…";
         try
         {
-            var transport = new BluetoothRfcommTransport(_settings.EdmBluetoothAddress);
+            // Address field routes the transport:
+            //   "ds" / "ds:<ip>"  -> DynoServer network as the handheld (loopback / that server IP)
+            //   IP:port           -> transparent TCP (same 0xA0 stream) to a simulator
+            //   12-hex MAC        -> Bluetooth RFCOMM (as before)
+            var addr = _settings.EdmBluetoothAddress?.Trim() ?? "";
+            ITransport transport;
+            if (addr.Equals("ds", StringComparison.OrdinalIgnoreCase) || addr.Equals("dynoserver", StringComparison.OrdinalIgnoreCase))
+                transport = new DynoServerTransport(System.Net.IPAddress.Loopback);
+            else if (addr.StartsWith("ds:", StringComparison.OrdinalIgnoreCase) && System.Net.IPAddress.TryParse(addr[3..], out var dsIp))
+                transport = new DynoServerTransport(dsIp);
+            else if (TcpTransport.TryParseEndpoint(addr, out var tcpHost, out var tcpPort))
+                transport = new TcpTransport(tcpHost, tcpPort);
+            else
+                transport = new BluetoothRfcommTransport(addr);
             _ctrl.LogEnabled = LogEnabled;
             _ctrl.SetRawCapture(_settings.ShowRawRx);
             // Open() can block while the RFCOMM link is negotiated — do it off the

@@ -9,7 +9,9 @@ namespace DynoCommandPC.Settings;
 /// </summary>
 public sealed class AppSettings
 {
-    // --- Connection (Bluetooth-direct only) ---
+    // --- Connection ---
+    // A 12-hex Bluetooth MAC (e.g. 0012F304962C) => direct RFCOMM/SPP; an IP:port
+    // (e.g. 127.0.0.1:51730 or localhost:51730) => transparent TCP to a simulator.
     public string EdmBluetoothAddress { get; set; } = "0012F304962C";
     public bool AutoConnectAtStartup { get; set; }
     public bool LogCommsToFile { get; set; }

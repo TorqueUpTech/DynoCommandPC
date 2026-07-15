@@ -40,11 +40,11 @@
         <TextBlock Text="CONNECTION" Style="{StaticResource Hdr}" Margin="0,0,0,4"/>
         <Grid>
             <Grid.ColumnDefinitions><ColumnDefinition Width="150"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-            <TextBlock Text="EDM Bluetooth address" Style="{StaticResource Lbl}" Grid.Column="0"/>
+            <TextBlock Text="EDM address" Style="{StaticResource Lbl}" Grid.Column="0"/>
             <TextBox Grid.Column="1" Text="{Binding EdmBluetoothAddress, UpdateSourceTrigger=PropertyChanged}"
-                     ToolTip="12 hex digits, e.g. 0012F304962C (the EDM's Bluetooth MAC)"/>
+                     ToolTip="Bluetooth MAC (0012F304962C) — or IP:port for TCP (127.0.0.1:51730) — or 'ds' / 'ds:&lt;ip&gt;' for the DynoServer network"/>
         </Grid>
-        <TextBlock Text="The app connects directly to this EDM MAC over Bluetooth (no pairing required)."
+        <TextBlock Text="MAC = direct Bluetooth (no pairing). IP:port = TCP to a simulator. 'ds' (or 'ds:&lt;server-ip&gt;') = join the DynoServer network as the handheld, same as the CAN feeder."
                    Style="{StaticResource Lbl}" TextWrapping="Wrap" Margin="0,4,0,0" FontSize="11"/>
         <CheckBox Content="Auto-connect to the EDM at startup" IsChecked="{Binding AutoConnectAtStartup}" Margin="0,8,0,0"/>
         <CheckBox Content="Log comms to a timestamped file (logs\ beside the app)" IsChecked="{Binding LogCommsToFile}"/>
