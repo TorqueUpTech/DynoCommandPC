@@ -247,8 +247,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public string BrakeButtonText => IsBrakeOn ? "Brake: ON" : _brakePending ? "Brake: armed (<5)" : "Brake";
 
     // ---- Ramp runs: one cycling button per run type (mirrors the original) ----
-    // The first step drives to the configured StartSpeed via Speed mode (the normal
-    // Knob/Speed path — the protocol has no dedicated start-speed packet), then:
+    // The first step holds the speed the dyno is already doing via Speed mode (the
+    // normal Knob/Speed path — the protocol has no dedicated start-speed packet), then:
     // Advanced: Speed(start) -> Ramp Up -> Hold(finish) -> Ramp Down -> off.
     // Basic:    Speed(start) -> Ramp Up -> Hold(finish) -> off (no ramp-down; coasts).
     private static readonly (DynoMode Mode, string Next, string State)[] AdvancedSeq =
@@ -266,6 +266,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
     };
     private (DynoMode Mode, string Next, string State)[] ActiveSeq => _runIsBasic ? BasicSeq : AdvancedSeq;
 
+    /// <summary>Below this the dyno counts as stopped, so a run starts from the configured StartSpeed.</summary>
+    private const double RampHoldMinKph = 5.0;
+
     private int _rampStep;
     private bool _inRampRun;
     private bool _runIsBasic;
@@ -275,6 +278,24 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public string AdvancedActiveTag  => (_inRampRun && !_runIsBasic) ? "ACTIVE" : "";
     public string BasicActiveTag     => (_inRampRun &&  _runIsBasic) ? "ACTIVE" : "";
 
+    /// <summary>
+    /// Speed the first press of a ramp run requests: whatever the dyno is already
+    /// doing, so the run starts from the operator's current speed rather than
+    /// driving to a preset. Falls back to the configured StartSpeed when the dyno is
+    /// stopped (nothing to hold) or when the request is in engine/rpm terms — the
+    /// received state only carries road speed, so there is nothing to convert from.
+    /// The rpm gate matches DynoController.Govern().
+    /// </summary>
+    private double RampStartSpeed()
+    {
+        var c = _ctrl.Command;
+        bool roadSpeed = c.SpeedControl != SpeedControl.Engine && c.SpeedUnits != SpeedUnit.Rpm;
+        double start = roadSpeed && _ctrl.State.SpeedKph >= RampHoldMinKph
+            ? c.FromKph(_ctrl.State.SpeedKph)
+            : c.StartSpeed;
+        return Math.Min(start, _settings.MaxForCurrentUnit());
+    }
+
     private void RunCycle(bool basic)
     {
         _brakePending = false;
@@ -283,8 +304,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
         {
             _inRampRun = true;
             _runIsBasic = basic;
-            _rampStep = 0; // first press: drive to the configured start speed (Speed mode)
-            _ctrl.Command.RequestedSpeed = Math.Min(_ctrl.Command.StartSpeed, _settings.MaxForCurrentUnit());
+            _rampStep = 0; // first press: hold the current speed (Speed mode)
+            _ctrl.Command.RequestedSpeed = RampStartSpeed();
             OnPropertyChanged(nameof(TargetSpeed));
         }
         else if (_rampStep >= seq.Length - 1)
