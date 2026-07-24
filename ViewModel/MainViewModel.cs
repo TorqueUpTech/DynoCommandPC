@@ -37,7 +37,6 @@ public sealed class MainViewModel : INotifyPropertyChanged
         NudgeSpeedCommand = new RelayCommand(p => TargetSpeed += SpeedStep((string)p!));
         NudgeLoadCommand  = new RelayCommand(p => TargetLoad  += double.Parse((string)p!));
         NudgeRampCommand  = new RelayCommand(p => RampRate    += double.Parse((string)p!));
-        NudgeBedCommand   = new RelayCommand(p => BedPosition += double.Parse((string)p!));
         NudgeBalanceCommand = new RelayCommand(p => Balance += double.Parse((string)p!));
         SnapshotCommand   = new RelayCommand(() => { _ctrl.Command.SnapshotRequests++; Beep(); });
         GraphClearCommand = new RelayCommand(() => { _ctrl.Command.GraphClearRequests++; Beep(); });
@@ -70,7 +69,6 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public RelayCommand NudgeSpeedCommand { get; }
     public RelayCommand NudgeLoadCommand { get; }
     public RelayCommand NudgeRampCommand { get; }
-    public RelayCommand NudgeBedCommand { get; }
     public RelayCommand NudgeBalanceCommand { get; }
     public RelayCommand SnapshotCommand { get; }
     public RelayCommand GraphClearCommand { get; }
@@ -495,11 +493,29 @@ public sealed class MainViewModel : INotifyPropertyChanged
         get => _ctrl.Command.RampRate;
         set { _ctrl.Command.RampRate = Math.Max(0, value); OnPropertyChanged(); }
     }
-    public double BedPosition
+    // ---- Set Bed: hold a button to drive the bed; release stops it (dead-man).
+    // Shorten drives toward the configured min, Lengthen toward the max, Go toward
+    // the position the PC has targeted. Mirrors the original EVENT_SetBed. ----
+    /// <summary>True once the dyno has reported a PC bed target, so "Go" has somewhere to drive.</summary>
+    public bool CanGoToBedTarget => _ctrl.State.BedTargetPosition > 0.0;
+
+    /// <summary>Begin driving the bed (button pressed). which = Shorten | Lengthen | Go.</summary>
+    public void BedMoveStart(string which)
     {
-        get => _ctrl.Command.BedRequestedPosition;
-        set { _ctrl.Command.BedRequestedPosition = Math.Max(0, value); OnPropertyChanged(); }
+        double target = which switch
+        {
+            "Shorten"  => _settings.BedLengthMin,
+            "Lengthen" => _settings.BedLengthMax,
+            "Go"       => _ctrl.State.BedTargetPosition,
+            _          => 0.0
+        };
+        if (target <= 0.0) return; // nothing valid to drive to (e.g. Go with no PC target yet)
+        _ctrl.Command.BedRequestedPosition = target;
+        _ctrl.Command.BedMoveActive = true;
     }
+
+    /// <summary>Stop driving the bed (button released).</summary>
+    public void BedMoveStop() => _ctrl.Command.BedMoveActive = false;
 
     public bool Is4Wd
     {
@@ -678,7 +694,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
             nameof(LastTx), nameof(LastRx), nameof(LinkAge), nameof(LogText), nameof(RawText), nameof(InspectorText), nameof(BrakeButtonText),
             nameof(ShowBrakeButton), nameof(CanCycleSpeedMode),
             nameof(IsShootoutActive), nameof(RampUnlocked), nameof(ShootoutBanner),
-            nameof(BedActual), nameof(BedTarget), nameof(TransmissionText), nameof(In4wdText), nameof(DeviceStatus),
+            nameof(BedActual), nameof(BedTarget), nameof(CanGoToBedTarget), nameof(TransmissionText), nameof(In4wdText), nameof(DeviceStatus),
             nameof(ShowBalance), nameof(Show4WdFeatures), nameof(ShowBed)
         }) OnPropertyChanged(n);
     }

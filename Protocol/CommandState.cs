@@ -37,6 +37,9 @@ public sealed class CommandState
 
     /// <summary>Bed target position in metres (Set-Bed mode).</summary>
     public double BedRequestedPosition;
+    /// <summary>True only while a Set-Bed button is held. The bed packet is sent only
+    /// then, so releasing the button stops the bed — a dead-man, as the original did.</summary>
+    public bool BedMoveActive;
 
     // Physical config used for speed scaling.
     public double GearRatio = 1.0;

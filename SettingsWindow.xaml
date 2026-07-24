@@ -51,6 +51,16 @@
 
         <TextBlock Text="DYNO TYPE" Style="{StaticResource Hdr}"/>
         <CheckBox Content="4WD bed (send balance packet)" IsChecked="{Binding Is4Wd}"/>
+        <Grid Margin="0,4,0,0">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="150"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <Grid.RowDefinitions><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+            <TextBlock Text="Bed length min (m)" Style="{StaticResource Lbl}" Grid.Row="0"
+                       ToolTip="Where 'Shorten' drives the bed"/>
+            <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding BedLengthMin}"/>
+            <TextBlock Text="Bed length max (m)" Style="{StaticResource Lbl}" Grid.Row="1"
+                       ToolTip="Where 'Lengthen' drives the bed"/>
+            <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding BedLengthMax}"/>
+        </Grid>
 
         <TextBlock Text="SPEED" Style="{StaticResource Hdr}"/>
         <Grid>

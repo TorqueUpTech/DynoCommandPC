@@ -265,7 +265,9 @@ public sealed class DynoController
             Send(PacketFactory.Knob(Command));
             Send(PacketFactory.DigitalInputs(Command));
 
-            if (Command.Mode == DynoMode.SetBed)
+            // Bed position: sent only while a Set-Bed button is held (dead-man), so
+            // releasing stops the bed. Matches the original's held-button behaviour.
+            if (Command.Mode == DynoMode.SetBed && Command.BedMoveActive)
                 Send(PacketFactory.RequestedBedPosition(Command));
 
             if (++_tick5Hz >= 4)

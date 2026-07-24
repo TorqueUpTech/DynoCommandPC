@@ -19,6 +19,11 @@ public sealed class AppSettings
     // --- Dyno type ---
     public bool Is4Wd { get; set; }
 
+    // --- 4WD bed travel limits (metres). The dyno doesn't report these; they mirror
+    // the original's BedLength config. Shorten drives to Min, Lengthen to Max. ---
+    public double BedLengthMin { get; set; } = 2.25;
+    public double BedLengthMax { get; set; } = 3.5;
+
     // --- Diagnostics panel visibility (main screen) ---
     public bool ShowPacketLog { get; set; } = true;
     public bool ShowPacketsSeen { get; set; } = true;

@@ -223,11 +223,17 @@
                         </StackPanel>
 
                         <StackPanel Visibility="{Binding ShowBed, Converter={StaticResource B2V}}">
-                            <TextBlock Text="BED POSITION (m)" Style="{StaticResource Hdr}"/>
+                            <TextBlock Text="SET BED — hold to move" Style="{StaticResource Hdr}"/>
                             <StackPanel Orientation="Horizontal">
-                                <Button Content="−0.1" Command="{Binding NudgeBedCommand}" CommandParameter="-0.1"/>
-                                <TextBox Text="{Binding BedPosition, UpdateSourceTrigger=PropertyChanged}" Width="80" TextAlignment="Center"/>
-                                <Button Content="+0.1" Command="{Binding NudgeBedCommand}" CommandParameter="0.1"/>
+                                <Button Content="◀ Shorten" Tag="Shorten"
+                                        PreviewMouseDown="BedButton_Down" PreviewMouseUp="BedButton_Up" MouseLeave="BedButton_Up"
+                                        ToolTip="Hold to retract the bed toward its minimum length"/>
+                                <Button Content="Lengthen ▶" Tag="Lengthen"
+                                        PreviewMouseDown="BedButton_Down" PreviewMouseUp="BedButton_Up" MouseLeave="BedButton_Up"
+                                        ToolTip="Hold to extend the bed toward its maximum length"/>
+                                <Button Content="Go ▲ target" Tag="Go" IsEnabled="{Binding CanGoToBedTarget}"
+                                        PreviewMouseDown="BedButton_Down" PreviewMouseUp="BedButton_Up" MouseLeave="BedButton_Up"
+                                        ToolTip="Hold to drive the bed to the position the PC has targeted"/>
                             </StackPanel>
                         </StackPanel>
 
