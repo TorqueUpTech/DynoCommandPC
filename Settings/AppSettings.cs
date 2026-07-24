@@ -44,8 +44,8 @@ public sealed class AppSettings
     public double SpeedIncLargeKph { get; set; } = 5;
     public double SpeedIncSmallMph { get; set; } = 1;
     public double SpeedIncLargeMph { get; set; } = 5;
-    public double SpeedIncSmallRpm { get; set; } = 10;
-    public double SpeedIncLargeRpm { get; set; } = 100;
+    public double SpeedIncSmallRpm { get; set; } = 100;
+    public double SpeedIncLargeRpm { get; set; } = 1000;
     /// <summary>Operator-defined run start speed (in the active speed unit).</summary>
     public double StartSpeed { get; set; } = 80;
 
