@@ -21,8 +21,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
         _settings = SettingsStore.Load();
         ApplySettings();
 
-        // Startup default target: 80 km/h (expressed in the active unit).
-        _ctrl.Command.RequestedSpeed = Math.Min(_ctrl.Command.FromKph(80.0), _settings.MaxForCurrentUnit());
+        // Startup default target: the physical equivalent of 80 km/h in the active
+        // unit (80 km/h, ~50 mph, or ~2000 rpm) — not a bare 80 in whatever unit.
+        _ctrl.Command.RequestedSpeed = DefaultTargetForCurrentUnit();
 
         ConnectCommand    = new RelayCommand(Connect, () => !IsConnected);
         DisconnectCommand = new RelayCommand(Disconnect, () => IsConnected);
@@ -236,6 +237,18 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private const double SpeedModeChangeMaxKph = 10.0;
     public bool CanCycleSpeedMode => _ctrl.State.SpeedKph < SpeedModeChangeMaxKph;
 
+    /// <summary>Round a speed UP to a clean value for its unit: nearest 100 rpm, else nearest 10.</summary>
+    private static double RoundUpForUnit(double v, SpeedUnit u)
+    {
+        double step = u == SpeedUnit.Rpm ? 100.0 : 10.0;
+        return Math.Ceiling(v / step) * step;
+    }
+
+    /// <summary>The default/start target (physical equivalent of 80 km/h) in the active unit.</summary>
+    private double DefaultTargetForCurrentUnit() => Math.Min(
+        RoundUpForUnit(_ctrl.Command.ConvertSpeed(80.0, SpeedUnit.Kph, _settings.SpeedUnits), _settings.SpeedUnits),
+        _settings.MaxForCurrentUnit());
+
     /// <summary>
     /// Cycle the main-screen speed mode: km/h -> mph -> engine -> km/h. Each is a
     /// (control, unit) pair: km/h and mph are road-speed control; "engine" switches
@@ -246,6 +259,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private void CycleSpeedMode()
     {
         if (!CanCycleSpeedMode) return; // gated to <10 km/h; the button is also disabled there
+        var oldUnit = _settings.SpeedUnits;
         (SpeedControl Ctrl, SpeedUnit Unit) next = (_settings.SpeedControl, _settings.SpeedUnits) switch
         {
             (SpeedControl.Road, SpeedUnit.Kph) => (SpeedControl.Road,   SpeedUnit.Mph),
@@ -254,6 +268,16 @@ public sealed class MainViewModel : INotifyPropertyChanged
         };
         _settings.SpeedControl = next.Ctrl;
         _settings.SpeedUnits   = next.Unit;
+
+        // Re-express the target in the new unit preserving the physical roller speed
+        // (as the original did), then round UP to a clean value. Stops "80" carrying
+        // over as 80 rpm; 80 km/h -> ~1941 -> 2000 rpm.
+        if (next.Unit != oldUnit)
+        {
+            double converted = _ctrl.Command.ConvertSpeed(_ctrl.Command.RequestedSpeed, oldUnit, next.Unit);
+            _ctrl.Command.RequestedSpeed = Math.Min(RoundUpForUnit(converted, next.Unit), _settings.MaxForCurrentUnit());
+        }
+
         SettingsStore.Save(_settings);
         ApplySettings(); // pushes to Command, clamps target, refreshes unit/increment labels
         OnPropertyChanged(nameof(SpeedModeButtonText));

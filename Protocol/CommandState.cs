@@ -56,6 +56,25 @@ public sealed class CommandState
     public double ToKph(double v) => SpeedUnits == SpeedUnit.Mph ? v * 1.609344 : v;
     public double FromKph(double kph) => SpeedUnits == SpeedUnit.Mph ? kph / 1.609344 : kph;
 
+    // Roller revs/sec is the physical core the original (SYS_Unit) stored speed in;
+    // every unit is a view of it (rpm = roller rpm = revs/s x 60). Used to preserve
+    // the physical roller speed when the display unit changes, as the original did.
+    private double ToRevsPerSec(double value, SpeedUnit unit) => unit switch
+    {
+        SpeedUnit.Mph => value * 1.609344 / (RollerCircumference * 3.6),
+        SpeedUnit.Rpm => value / 60.0,
+        _             => value / (RollerCircumference * 3.6), // Kph
+    };
+    private double FromRevsPerSec(double revs, SpeedUnit unit) => unit switch
+    {
+        SpeedUnit.Mph => revs * RollerCircumference * 3.6 * 0.621371192237334,
+        SpeedUnit.Rpm => revs * 60.0,
+        _             => revs * RollerCircumference * 3.6, // Kph
+    };
+    /// <summary>Re-express a speed in a different unit, preserving the physical roller speed.</summary>
+    public double ConvertSpeed(double value, SpeedUnit from, SpeedUnit to) =>
+        FromRevsPerSec(ToRevsPerSec(value, from), to);
+
     public bool Is4Wd;
 
     // One-shot requests (decremented as they are sent).
