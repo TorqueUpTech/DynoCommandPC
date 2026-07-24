@@ -58,6 +58,7 @@
             <Grid.RowDefinitions>
                 <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
                 <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
+                <RowDefinition/>
             </Grid.RowDefinitions>
             <TextBlock Text="Units" Style="{StaticResource Lbl}" Grid.Row="0"/>
             <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding Source={StaticResource SpeedUnitValues}}" SelectedItem="{Binding SpeedUnits}"/>
@@ -73,13 +74,27 @@
             <TextBox Grid.Row="5" Grid.Column="1" Text="{Binding SpeedMaxMph}"/>
             <TextBlock Text="Max speed (rpm)" Style="{StaticResource Lbl}" Grid.Row="6"/>
             <TextBox Grid.Row="6" Grid.Column="1" Text="{Binding SpeedMaxRpm}"/>
-            <TextBlock Text="Increment (small)" Style="{StaticResource Lbl}" Grid.Row="7"/>
-            <TextBox Grid.Row="7" Grid.Column="1" Text="{Binding SpeedIncSmall}"/>
-            <TextBlock Text="Increment (large)" Style="{StaticResource Lbl}" Grid.Row="8"/>
-            <TextBox Grid.Row="8" Grid.Column="1" Text="{Binding SpeedIncLarge}"/>
-            <TextBlock Text="Start speed" Style="{StaticResource Lbl}" Grid.Row="9"
+            <TextBlock Text="Increment km/h (sm / lg)" Style="{StaticResource Lbl}" Grid.Row="7"
+                       ToolTip="Nudge steps used when commanding road speed in km/h"/>
+            <StackPanel Grid.Row="7" Grid.Column="1" Orientation="Horizontal">
+                <TextBox Width="70" Text="{Binding SpeedIncSmallKph}"/>
+                <TextBox Width="70" Margin="6,2,0,2" Text="{Binding SpeedIncLargeKph}"/>
+            </StackPanel>
+            <TextBlock Text="Increment mph (sm / lg)" Style="{StaticResource Lbl}" Grid.Row="8"
+                       ToolTip="Nudge steps used when commanding road speed in mph"/>
+            <StackPanel Grid.Row="8" Grid.Column="1" Orientation="Horizontal">
+                <TextBox Width="70" Text="{Binding SpeedIncSmallMph}"/>
+                <TextBox Width="70" Margin="6,2,0,2" Text="{Binding SpeedIncLargeMph}"/>
+            </StackPanel>
+            <TextBlock Text="Increment rpm (sm / lg)" Style="{StaticResource Lbl}" Grid.Row="9"
+                       ToolTip="Nudge steps used in engine/rpm mode (rpm units or Engine control)"/>
+            <StackPanel Grid.Row="9" Grid.Column="1" Orientation="Horizontal">
+                <TextBox Width="70" Text="{Binding SpeedIncSmallRpm}"/>
+                <TextBox Width="70" Margin="6,2,0,2" Text="{Binding SpeedIncLargeRpm}"/>
+            </StackPanel>
+            <TextBlock Text="Start speed" Style="{StaticResource Lbl}" Grid.Row="10"
                        ToolTip="Run start speed, in the active speed unit"/>
-            <TextBox Grid.Row="9" Grid.Column="1" Text="{Binding StartSpeed}"/>
+            <TextBox Grid.Row="10" Grid.Column="1" Text="{Binding StartSpeed}"/>
         </Grid>
 
         <TextBlock Text="DIAGNOSTICS" Style="{StaticResource Hdr}"/>

@@ -36,8 +36,16 @@ public sealed class AppSettings
     public double SpeedMaxKph { get; set; } = 200;
     public double SpeedMaxMph { get; set; } = 124;
     public double SpeedMaxRpm { get; set; } = 5000;
-    public double SpeedIncSmall { get; set; } = 1;
-    public double SpeedIncLarge { get; set; } = 5;
+
+    // Speed-nudge increments, held per unit — a step that suits km/h (±1/±5) is
+    // uselessly fine in rpm (which wants ±10/±100), so the active set follows the
+    // effective mode. Mirrors the original's per-unit SpeedInc_* values.
+    public double SpeedIncSmallKph { get; set; } = 1;
+    public double SpeedIncLargeKph { get; set; } = 5;
+    public double SpeedIncSmallMph { get; set; } = 1;
+    public double SpeedIncLargeMph { get; set; } = 5;
+    public double SpeedIncSmallRpm { get; set; } = 10;
+    public double SpeedIncLargeRpm { get; set; } = 100;
     /// <summary>Operator-defined run start speed (in the active speed unit).</summary>
     public double StartSpeed { get; set; } = 80;
 
@@ -47,6 +55,19 @@ public sealed class AppSettings
         SpeedUnit.Mph => SpeedMaxMph,
         _ => SpeedMaxKph
     };
+
+    /// <summary>True when speed is commanded in engine terms — rpm units, or Engine
+    /// control regardless of unit. Matches the gate used by the governor, the TX
+    /// encoder and the ramp start-speed logic.</summary>
+    public bool IsEngineMode => SpeedUnits == SpeedUnit.Rpm || SpeedControl == SpeedControl.Engine;
+
+    /// <summary>Small nudge increment for the active mode/unit.</summary>
+    public double ActiveSpeedIncSmall() =>
+        IsEngineMode ? SpeedIncSmallRpm : SpeedUnits == SpeedUnit.Mph ? SpeedIncSmallMph : SpeedIncSmallKph;
+
+    /// <summary>Large nudge increment for the active mode/unit.</summary>
+    public double ActiveSpeedIncLarge() =>
+        IsEngineMode ? SpeedIncLargeRpm : SpeedUnits == SpeedUnit.Mph ? SpeedIncLargeMph : SpeedIncLargeKph;
 
     public string UnitLabel() => SpeedUnits switch
     {

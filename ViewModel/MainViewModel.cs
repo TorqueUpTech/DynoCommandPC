@@ -27,6 +27,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         ConnectCommand    = new RelayCommand(Connect, () => !IsConnected);
         DisconnectCommand = new RelayCommand(Disconnect, () => IsConnected);
         OpenSettingsCommand = new RelayCommand(OpenSettings);
+        CycleSpeedModeCommand = new RelayCommand(CycleSpeedMode);
         SetModeCommand    = new RelayCommand(p => { SetMode(Enum.Parse<DynoMode>((string)p!)); Beep(); });
         ToggleBrakeCommand = new RelayCommand(ToggleBrake);
         AdvancedCycleCommand = new RelayCommand(() => RunCycle(basic: false));
@@ -59,6 +60,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public RelayCommand ConnectCommand { get; }
     public RelayCommand DisconnectCommand { get; }
     public RelayCommand OpenSettingsCommand { get; }
+    public RelayCommand CycleSpeedModeCommand { get; }
     public RelayCommand SetModeCommand { get; }
     public RelayCommand ToggleBrakeCommand { get; }
     public RelayCommand AdvancedCycleCommand { get; }
@@ -181,8 +183,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
         {
             nameof(EdmAddress), nameof(Is4Wd), nameof(SpeedUnitLabel), nameof(LiveUnitLabel),
             nameof(SpeedDecSmallLabel), nameof(SpeedIncSmallLabel),
-            nameof(SpeedDecLargeLabel), nameof(SpeedIncLargeLabel), nameof(TargetSpeed),
-            nameof(ShowPacketLog), nameof(ShowPacketsSeen), nameof(ShowRawRx)
+            nameof(SpeedDecLargeLabel), nameof(SpeedIncLargeLabel), nameof(SpeedModeButtonText),
+            nameof(TargetSpeed), nameof(ShowPacketLog), nameof(ShowPacketsSeen), nameof(ShowRawRx)
         }) OnPropertyChanged(n);
         RaiseVisibility();
     }
@@ -216,14 +218,47 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     private double SpeedStep(string token)
     {
-        double mag = token.StartsWith("L") ? _settings.SpeedIncLarge : _settings.SpeedIncSmall;
+        double mag = token.StartsWith("L") ? _settings.ActiveSpeedIncLarge() : _settings.ActiveSpeedIncSmall();
         return token.EndsWith("-") ? -mag : mag;
     }
 
-    public string SpeedDecLargeLabel => $"−{_settings.SpeedIncLarge:0.###}";
-    public string SpeedDecSmallLabel => $"−{_settings.SpeedIncSmall:0.###}";
-    public string SpeedIncSmallLabel => $"+{_settings.SpeedIncSmall:0.###}";
-    public string SpeedIncLargeLabel => $"+{_settings.SpeedIncLarge:0.###}";
+    public string SpeedDecLargeLabel => $"−{_settings.ActiveSpeedIncLarge():0.###}";
+    public string SpeedDecSmallLabel => $"−{_settings.ActiveSpeedIncSmall():0.###}";
+    public string SpeedIncSmallLabel => $"+{_settings.ActiveSpeedIncSmall():0.###}";
+    public string SpeedIncLargeLabel => $"+{_settings.ActiveSpeedIncLarge():0.###}";
+
+    /// <summary>Label for the main-screen speed-mode cycle button.</summary>
+    public string SpeedModeButtonText => _settings.IsEngineMode ? "Speed: engine"
+        : _settings.SpeedUnits == SpeedUnit.Mph ? "Speed: mph" : "Speed: km/h";
+
+    /// <summary>The rollers must be at/near a standstill to switch speed mode —
+    /// flipping road&lt;-&gt;engine control (or the unit) while spinning is unsafe.</summary>
+    private const double SpeedModeChangeMaxKph = 10.0;
+    public bool CanCycleSpeedMode => _ctrl.State.SpeedKph < SpeedModeChangeMaxKph;
+
+    /// <summary>
+    /// Cycle the main-screen speed mode: km/h -> mph -> engine -> km/h. Each is a
+    /// (control, unit) pair: km/h and mph are road-speed control; "engine" switches
+    /// the dyno into RPM control (the DigitalInputs CommandRpm bit) and displays rpm.
+    /// Persists like a Settings change and re-applies so the governor, TX encoder,
+    /// increments and labels all follow.
+    /// </summary>
+    private void CycleSpeedMode()
+    {
+        if (!CanCycleSpeedMode) return; // gated to <10 km/h; the button is also disabled there
+        (SpeedControl Ctrl, SpeedUnit Unit) next = (_settings.SpeedControl, _settings.SpeedUnits) switch
+        {
+            (SpeedControl.Road, SpeedUnit.Kph) => (SpeedControl.Road,   SpeedUnit.Mph),
+            (SpeedControl.Road, SpeedUnit.Mph) => (SpeedControl.Engine, SpeedUnit.Rpm),
+            _                                  => (SpeedControl.Road,   SpeedUnit.Kph), // engine (or any) -> km/h
+        };
+        _settings.SpeedControl = next.Ctrl;
+        _settings.SpeedUnits   = next.Unit;
+        SettingsStore.Save(_settings);
+        ApplySettings(); // pushes to Command, clamps target, refreshes unit/increment labels
+        OnPropertyChanged(nameof(SpeedModeButtonText));
+        Beep();
+    }
     public string SpeedUnitLabel => _settings.UnitLabel();
 
     /// <summary>Unit shown for the live road-speed read-outs (km/h or mph; rpm falls back to km/h).</summary>
@@ -583,7 +618,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
             foreach (var n in new[]
             {
                 nameof(SpeedUnitLabel), nameof(LiveUnitLabel), nameof(SpeedDecSmallLabel),
-                nameof(SpeedIncSmallLabel), nameof(SpeedDecLargeLabel), nameof(SpeedIncLargeLabel)
+                nameof(SpeedIncSmallLabel), nameof(SpeedDecLargeLabel), nameof(SpeedIncLargeLabel),
+                nameof(SpeedModeButtonText)
             }) OnPropertyChanged(n);
         }
 
@@ -616,7 +652,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
             nameof(HandsfreeState), nameof(TxCount), nameof(RxCount), nameof(ErrCount),
             nameof(CommsLosses),
             nameof(LastTx), nameof(LastRx), nameof(LinkAge), nameof(LogText), nameof(RawText), nameof(InspectorText), nameof(BrakeButtonText),
-            nameof(ShowBrakeButton),
+            nameof(ShowBrakeButton), nameof(CanCycleSpeedMode),
             nameof(IsShootoutActive), nameof(RampUnlocked), nameof(ShootoutBanner),
             nameof(BedActual), nameof(BedTarget), nameof(TransmissionText), nameof(In4wdText), nameof(DeviceStatus),
             nameof(ShowBalance), nameof(Show4WdFeatures), nameof(ShowBed)

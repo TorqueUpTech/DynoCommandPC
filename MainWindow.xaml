@@ -182,9 +182,15 @@
                                     Background="{Binding ModeText, Converter={StaticResource ModeBrush}, ConverterParameter=Brake}"/>
                         </WrapPanel>
 
-                        <TextBlock Style="{StaticResource Hdr}">
-                            <Run Text="TARGET SPEED ("/><Run Text="{Binding SpeedUnitLabel, Mode=OneWay}"/><Run Text=")"/>
-                        </TextBlock>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource Hdr}" VerticalAlignment="Center">
+                                <Run Text="TARGET SPEED ("/><Run Text="{Binding SpeedUnitLabel, Mode=OneWay}"/><Run Text=")"/>
+                            </TextBlock>
+                            <Button Content="{Binding SpeedModeButtonText}" Command="{Binding CycleSpeedModeCommand}"
+                                    IsEnabled="{Binding CanCycleSpeedMode}" ToolTipService.ShowOnDisabled="True"
+                                    Margin="12,0,0,0" Padding="8,2" VerticalAlignment="Center"
+                                    ToolTip="Cycle speed mode: km/h → mph → engine (RPM control). Only below 10 km/h."/>
+                        </StackPanel>
                         <StackPanel Orientation="Horizontal">
                             <Button Content="{Binding SpeedDecLargeLabel}" Command="{Binding NudgeSpeedCommand}" CommandParameter="L-"/>
                             <Button Content="{Binding SpeedDecSmallLabel}" Command="{Binding NudgeSpeedCommand}" CommandParameter="S-"/>
