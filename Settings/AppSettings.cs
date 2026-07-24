@@ -54,6 +54,25 @@ public sealed class AppSettings
     /// <summary>Operator-defined run start speed (in the active speed unit).</summary>
     public double StartSpeed { get; set; } = 80;
 
+    // --- Load (fixed-load mode). Percent, clamped Min..Max. Two resolutions
+    // (fine/coarse) toggled at runtime; the small buttons step by the small inc,
+    // the large buttons snap to the large-inc grid then step. Mirrors the
+    // original's Load*Inc / LoadMin / LoadMax config. ---
+    public double LoadMin { get; set; } = 0;
+    public double LoadMax { get; set; } = 200;
+    public double LoadFineSmallInc { get; set; } = 0.1;
+    public double LoadFineLargeInc { get; set; } = 5;
+    public double LoadCoarseSmallInc { get; set; } = 1;
+    public double LoadCoarseLargeInc { get; set; } = 10;
+    /// <summary>true = fine (0.1 / 5), false = coarse (1 / 10). Persisted like the original's LoadResolution.</summary>
+    public bool LoadResolutionFine { get; set; } = true;
+
+    /// <summary>Small (Left/Right) load step for the active resolution.</summary>
+    public double LoadSmallInc() => LoadResolutionFine ? LoadFineSmallInc : LoadCoarseSmallInc;
+
+    /// <summary>Large (Up/Down, snap-to-grid) load step for the active resolution.</summary>
+    public double LoadLargeInc() => LoadResolutionFine ? LoadFineLargeInc : LoadCoarseLargeInc;
+
     public double MaxForCurrentUnit() => SpeedUnits switch
     {
         SpeedUnit.Rpm => SpeedMaxRpm,

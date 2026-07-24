@@ -35,7 +35,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
         BasicCycleCommand    = new RelayCommand(() => RunCycle(basic: true));
         CancelRampCommand    = new RelayCommand(CancelRamp);
         NudgeSpeedCommand = new RelayCommand(p => TargetSpeed += SpeedStep((string)p!));
-        NudgeLoadCommand  = new RelayCommand(p => TargetLoad  += double.Parse((string)p!));
+        NudgeLoadCommand  = new RelayCommand(p => NudgeLoad((string)p!));
+        ToggleLoadResolutionCommand = new RelayCommand(ToggleLoadResolution);
         NudgeRampCommand  = new RelayCommand(p => RampRate    += double.Parse((string)p!));
         NudgeBalanceCommand = new RelayCommand(p => Balance += double.Parse((string)p!));
         SnapshotCommand   = new RelayCommand(() => { _ctrl.Command.SnapshotRequests++; Beep(); });
@@ -68,6 +69,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public RelayCommand CancelRampCommand { get; }
     public RelayCommand NudgeSpeedCommand { get; }
     public RelayCommand NudgeLoadCommand { get; }
+    public RelayCommand ToggleLoadResolutionCommand { get; }
     public RelayCommand NudgeRampCommand { get; }
     public RelayCommand NudgeBalanceCommand { get; }
     public RelayCommand SnapshotCommand { get; }
@@ -177,14 +179,16 @@ public sealed class MainViewModel : INotifyPropertyChanged
         _ctrl.SetCommsLogging(_settings.LogCommsToFile);
         if (IsConnected) _ctrl.SetRawCapture(_settings.ShowRawRx);
         if (c.TargetSpeed > _settings.MaxForCurrentUnit()) c.TargetSpeed = _settings.MaxForCurrentUnit();
+        c.TargetLoad = Math.Clamp(c.TargetLoad, _settings.LoadMin, _settings.LoadMax);
 
         foreach (var n in new[]
         {
             nameof(EdmAddress), nameof(Is4Wd), nameof(SpeedUnitLabel), nameof(LiveUnitLabel),
             nameof(SpeedDecSmallLabel), nameof(SpeedIncSmallLabel),
             nameof(SpeedDecLargeLabel), nameof(SpeedIncLargeLabel), nameof(SpeedModeButtonText),
-            nameof(TargetSpeed), nameof(ShowPacketLog), nameof(ShowPacketsSeen), nameof(ShowRawRx)
+            nameof(TargetSpeed), nameof(TargetLoad), nameof(ShowPacketLog), nameof(ShowPacketsSeen), nameof(ShowRawRx)
         }) OnPropertyChanged(n);
+        RaiseLoadLabels();
         RaiseVisibility();
     }
 
@@ -225,6 +229,60 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public string SpeedDecSmallLabel => $"−{_settings.ActiveSpeedIncSmall():0.###}";
     public string SpeedIncSmallLabel => $"+{_settings.ActiveSpeedIncSmall():0.###}";
     public string SpeedIncLargeLabel => $"+{_settings.ActiveSpeedIncLarge():0.###}";
+
+    /// <summary>
+    /// Load nudge, faithful to the original's two-axis behaviour: the small buttons
+    /// (S+/S-) step by the small increment; the large buttons (L+/L-) snap to the
+    /// nearest large-increment grid line first, then step (Ceil/Floor) so repeated
+    /// presses walk clean multiples. Fine/Coarse selects the increment pair.
+    /// </summary>
+    private void NudgeLoad(string token)
+    {
+        double v = TargetLoad;
+        if (token[0] == 'S')
+        {
+            v += token.EndsWith("-") ? -_settings.LoadSmallInc() : _settings.LoadSmallInc();
+        }
+        else // large: snap to grid (original activate_Up/DownButton)
+        {
+            double lg = _settings.LoadLargeInc();
+            if (token.EndsWith("-"))
+            {
+                double num = Math.Floor(v / lg) * lg;
+                v = v == num ? num - lg : num;
+            }
+            else
+            {
+                double num = Math.Ceiling(v / lg) * lg;
+                v = v == num ? num + lg : num;
+            }
+        }
+        TargetLoad = v; // setter clamps to [LoadMin, LoadMax] and rounds to 0.1 %
+    }
+
+    /// <summary>Flip the load nudge resolution (fine 0.1/5 &lt;-&gt; coarse 1/10) and persist it.</summary>
+    private void ToggleLoadResolution()
+    {
+        _settings.LoadResolutionFine = !_settings.LoadResolutionFine;
+        SettingsStore.Save(_settings);
+        RaiseLoadLabels();
+        Beep();
+    }
+
+    private void RaiseLoadLabels()
+    {
+        foreach (var n in new[]
+        {
+            nameof(LoadResolutionButtonText), nameof(LoadDecLargeLabel),
+            nameof(LoadDecSmallLabel), nameof(LoadIncSmallLabel), nameof(LoadIncLargeLabel)
+        }) OnPropertyChanged(n);
+    }
+
+    public string LoadResolutionButtonText => _settings.LoadResolutionFine ? "Res: fine" : "Res: coarse";
+    public string LoadDecLargeLabel => $"−{_settings.LoadLargeInc():0.###}";
+    public string LoadDecSmallLabel => $"−{_settings.LoadSmallInc():0.###}";
+    public string LoadIncSmallLabel => $"+{_settings.LoadSmallInc():0.###}";
+    public string LoadIncLargeLabel => $"+{_settings.LoadLargeInc():0.###}";
 
     /// <summary>Label for the main-screen speed-mode cycle button.</summary>
     public string SpeedModeButtonText => _settings.IsEngineMode ? "Speed: engine"
@@ -295,6 +353,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     {
         _inRampRun = false;
         _brakePending = false;
+        if (m == DynoMode.Load) TargetLoad = 0; // original EVENT_Load.initialise() zeroes the requested load on entry
         _ctrl.Command.Mode = m;
         RaiseModeUi();
     }
@@ -486,7 +545,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public double TargetLoad
     {
         get => _ctrl.Command.TargetLoad;
-        set { _ctrl.Command.TargetLoad = Math.Max(0, value); OnPropertyChanged(); }
+        set { _ctrl.Command.TargetLoad = Math.Round(Math.Clamp(value, _settings.LoadMin, _settings.LoadMax), 1); OnPropertyChanged(); }
     }
     public double RampRate
     {

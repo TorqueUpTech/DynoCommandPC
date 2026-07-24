@@ -200,13 +200,18 @@
                         </StackPanel>
 
                         <StackPanel Visibility="{Binding ShowLoad, Converter={StaticResource B2V}}">
-                            <TextBlock Text="TARGET LOAD" Style="{StaticResource Hdr}"/>
                             <StackPanel Orientation="Horizontal">
-                                <Button Content="−5" Command="{Binding NudgeLoadCommand}" CommandParameter="-5"/>
-                                <Button Content="−1" Command="{Binding NudgeLoadCommand}" CommandParameter="-1"/>
+                                <TextBlock Text="TARGET LOAD (%)" Style="{StaticResource Hdr}" VerticalAlignment="Center"/>
+                                <Button Content="{Binding LoadResolutionButtonText}" Command="{Binding ToggleLoadResolutionCommand}"
+                                        Margin="12,0,0,0" Padding="8,2" VerticalAlignment="Center"
+                                        ToolTip="Toggle load nudge resolution: fine (0.1 / 5) or coarse (1 / 10)."/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <Button Content="{Binding LoadDecLargeLabel}" Command="{Binding NudgeLoadCommand}" CommandParameter="L-"/>
+                                <Button Content="{Binding LoadDecSmallLabel}" Command="{Binding NudgeLoadCommand}" CommandParameter="S-"/>
                                 <TextBox Text="{Binding TargetLoad, UpdateSourceTrigger=PropertyChanged}" Width="80" TextAlignment="Center"/>
-                                <Button Content="+1" Command="{Binding NudgeLoadCommand}" CommandParameter="1"/>
-                                <Button Content="+5" Command="{Binding NudgeLoadCommand}" CommandParameter="5"/>
+                                <Button Content="{Binding LoadIncSmallLabel}" Command="{Binding NudgeLoadCommand}" CommandParameter="S+"/>
+                                <Button Content="{Binding LoadIncLargeLabel}" Command="{Binding NudgeLoadCommand}" CommandParameter="L+"/>
                             </StackPanel>
                         </StackPanel>
 

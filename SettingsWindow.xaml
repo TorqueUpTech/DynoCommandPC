@@ -107,6 +107,31 @@
             <TextBox Grid.Row="10" Grid.Column="1" Text="{Binding StartSpeed}"/>
         </Grid>
 
+        <TextBlock Text="LOAD (fixed-load mode, %)" Style="{StaticResource Hdr}"/>
+        <Grid>
+            <Grid.ColumnDefinitions><ColumnDefinition Width="150"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+            <TextBlock Text="Range (min / max %)" Style="{StaticResource Lbl}" Grid.Row="0"
+                       ToolTip="Requested load is clamped to this range"/>
+            <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal">
+                <TextBox Width="70" Text="{Binding LoadMin}"/>
+                <TextBox Width="70" Margin="6,2,0,2" Text="{Binding LoadMax}"/>
+            </StackPanel>
+            <TextBlock Text="Fine inc (sm / lg)" Style="{StaticResource Lbl}" Grid.Row="1"
+                       ToolTip="Small = the ±small buttons; Large = the snap-to-grid ±large buttons, in fine resolution"/>
+            <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal">
+                <TextBox Width="70" Text="{Binding LoadFineSmallInc}"/>
+                <TextBox Width="70" Margin="6,2,0,2" Text="{Binding LoadFineLargeInc}"/>
+            </StackPanel>
+            <TextBlock Text="Coarse inc (sm / lg)" Style="{StaticResource Lbl}" Grid.Row="2"
+                       ToolTip="Small / Large steps in coarse resolution"/>
+            <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal">
+                <TextBox Width="70" Text="{Binding LoadCoarseSmallInc}"/>
+                <TextBox Width="70" Margin="6,2,0,2" Text="{Binding LoadCoarseLargeInc}"/>
+            </StackPanel>
+        </Grid>
+        <CheckBox Content="Fine load resolution by default (uncheck = coarse)" IsChecked="{Binding LoadResolutionFine}" Margin="0,4,0,0"/>
+
         <TextBlock Text="DIAGNOSTICS" Style="{StaticResource Hdr}"/>
         <CheckBox Content="Show packet log panel" IsChecked="{Binding ShowPacketLog}"/>
         <CheckBox Content="Show 'packet types seen' panel" IsChecked="{Binding ShowPacketsSeen}"/>
