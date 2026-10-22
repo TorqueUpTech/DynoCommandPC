@@ -245,6 +245,28 @@ public sealed class DynoController
         c.TargetSpeed = c.FromKph(cmdKph);
     }
 
+    /// <summary>Brake auto-releases after this long.</summary>
+    public static readonly TimeSpan BrakeAutoOff = TimeSpan.FromMinutes(2);
+
+    /// <summary>
+    /// Brake auto-release: the brake must not stay on indefinitely, so after
+    /// <see cref="BrakeAutoOff"/> it drops back to No Load and pulses the brake-clear
+    /// bit, exactly as a manual release does. Runs on the TX tick so it fires
+    /// regardless of the UI. Mirrors DynoController.autoReleaseBrake on Android.
+    /// </summary>
+    private void AutoReleaseBrake(DateTime nowUtc)
+    {
+        var c = Command;
+        if (c.Mode != DynoMode.Brake) { c.BrakeOnSinceUtc = null; return; }
+        c.BrakeOnSinceUtc ??= nowUtc;
+        if (nowUtc - c.BrakeOnSinceUtc.Value >= BrakeAutoOff)
+        {
+            c.Mode = DynoMode.NoLoad;
+            c.BrakeClearRequests = 6;
+            c.BrakeOnSinceUtc = null;
+        }
+    }
+
     private void TxTick(object? _)
     {
         try
@@ -261,6 +283,7 @@ public sealed class DynoController
             Command.ShootoutActive = State.ShootoutActive;
             Command.PcRampRate = State.PcRampRate;
 
+            AutoReleaseBrake(nowUtc);
             Govern();
             Send(PacketFactory.Knob(Command));
             Send(PacketFactory.DigitalInputs(Command));

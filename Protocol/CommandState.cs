@@ -86,4 +86,6 @@ public sealed class CommandState
     public int SwapScreenRequests;
     /// <summary>When >0, briefly send the Speed command bit to clear the dyno's latched brake warning.</summary>
     public int BrakeClearRequests;
+    /// <summary>UTC time the brake was engaged (null = off); drives the auto-release.</summary>
+    public DateTime? BrakeOnSinceUtc;
 }

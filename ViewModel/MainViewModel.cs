@@ -360,7 +360,20 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     public bool IsBrakeOn => _ctrl.Command.Mode == DynoMode.Brake;
     private bool _brakePending; // armed, waiting for speed < 5 km/h
-    public string BrakeButtonText => IsBrakeOn ? "Brake: ON" : _brakePending ? "Brake: armed (<5)" : "Brake";
+    public string BrakeButtonText => IsBrakeOn ? $"Brake: ON  {BrakeTimeLeft:m\\:ss}" : _brakePending ? "Brake: armed (<5)" : "Brake";
+
+    // Time until the brake auto-releases (see DynoController.AutoReleaseBrake).
+    private TimeSpan BrakeTimeLeft
+    {
+        get
+        {
+            var since = _ctrl.Command.BrakeOnSinceUtc;
+            if (since is null) return DynoController.BrakeAutoOff;
+            var left = DynoController.BrakeAutoOff - (DateTime.UtcNow - since.Value);
+            return left < TimeSpan.Zero ? TimeSpan.Zero : TimeSpan.FromSeconds(Math.Ceiling(left.TotalSeconds));
+        }
+    }
+    private bool _brakeWasOn;
 
     // ---- Ramp runs: one cycling button per run type (mirrors the original) ----
     // The first step holds the speed the dyno is already doing via Speed mode (the
@@ -684,6 +697,14 @@ public sealed class MainViewModel : INotifyPropertyChanged
             _brakePending = false;
             _ctrl.Command.Mode = DynoMode.Brake;
             RaiseModeUi();
+        }
+
+        // Keep the brake countdown ticking, and pick up an auto-release done by the controller.
+        if (IsBrakeOn || _brakeWasOn)
+        {
+            if (IsBrakeOn) OnPropertyChanged(nameof(BrakeButtonText));
+            else RaiseModeUi();
+            _brakeWasOn = IsBrakeOn;
         }
 
         ActualSpeed = ToDisplayUnit(s.SpeedKph).ToString("F1");
