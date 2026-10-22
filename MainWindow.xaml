@@ -51,8 +51,7 @@
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                 <TextBlock Text="EDM" Foreground="#9AA4B0" VerticalAlignment="Center" Margin="0,0,4,0"/>
                 <TextBlock Text="{Binding EdmAddress}" FontFamily="Consolas" VerticalAlignment="Center" Margin="0,0,12,0"/>
-                <Button Content="Connect" Command="{Binding ConnectCommand}" MinWidth="90"/>
-                <Button Content="Disconnect" Command="{Binding DisconnectCommand}" MinWidth="90"/>
+                <Button Content="{Binding ConnectButtonText}" Command="{Binding ToggleConnectCommand}" MinWidth="90"/>
                 <Button Content="⚙ Settings…" Command="{Binding OpenSettingsCommand}" MinWidth="90"/>
                 <TextBlock Text="{Binding Status}" VerticalAlignment="Center" Margin="14,0,0,0"
                            Foreground="#8FD08F" FontWeight="SemiBold"/>

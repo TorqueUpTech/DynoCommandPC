@@ -27,6 +27,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
         ConnectCommand    = new RelayCommand(Connect, () => !IsConnected);
         DisconnectCommand = new RelayCommand(Disconnect, () => IsConnected);
+        // One button: Connect when idle, Disconnect once linked. Mirrors Android's btnConnect.
+        ToggleConnectCommand = new RelayCommand(() => { if (IsConnected) Disconnect(); else Connect(); });
         OpenSettingsCommand = new RelayCommand(OpenSettings);
         CycleSpeedModeCommand = new RelayCommand(CycleSpeedMode);
         SetModeCommand    = new RelayCommand(p => { SetMode(Enum.Parse<DynoMode>((string)p!)); Beep(); });
@@ -34,7 +36,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         AdvancedCycleCommand = new RelayCommand(() => RunCycle(basic: false));
         BasicCycleCommand    = new RelayCommand(() => RunCycle(basic: true));
         CancelRampCommand    = new RelayCommand(CancelRamp);
-        NudgeSpeedCommand = new RelayCommand(p => TargetSpeed += SpeedStep((string)p!));
+        NudgeSpeedCommand = new RelayCommand(p => NudgeSpeed(SpeedStep((string)p!)));
         NudgeLoadCommand  = new RelayCommand(p => NudgeLoad((string)p!));
         ToggleLoadResolutionCommand = new RelayCommand(ToggleLoadResolution);
         NudgeRampCommand  = new RelayCommand(p => RampRate    += double.Parse((string)p!));
@@ -60,6 +62,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     public RelayCommand ConnectCommand { get; }
     public RelayCommand DisconnectCommand { get; }
+    public RelayCommand ToggleConnectCommand { get; }
+    public string ConnectButtonText => IsConnected ? "Disconnect" : "Connect";
     public RelayCommand OpenSettingsCommand { get; }
     public RelayCommand CycleSpeedModeCommand { get; }
     public RelayCommand SetModeCommand { get; }
@@ -217,6 +221,18 @@ public sealed class MainViewModel : INotifyPropertyChanged
                 Status = "Save failed: " + ex.Message;
             }
         }
+    }
+
+    /// <summary>
+    /// Step the target speed on the button's own grid so it stays a whole number:
+    /// ±1 lands on whole km/h, ±5 on multiples of 5 (63 +5 -> 65, 63 -5 -> 60).
+    /// Mirrors MainActivity.nudge on Android.
+    /// </summary>
+    private void NudgeSpeed(double amount)
+    {
+        double step = Math.Abs(amount), v = TargetSpeed;
+        TargetSpeed = amount > 0 ? Math.Floor(v / step + 1e-9) * step + step
+                                 : Math.Ceiling(v / step - 1e-9) * step - step;
     }
 
     private double SpeedStep(string token)
@@ -422,7 +438,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
         double start = roadSpeed && _ctrl.State.SpeedKph >= RampHoldMinKph
             ? c.FromKph(_ctrl.State.SpeedKph)
             : c.StartSpeed;
-        return Math.Min(start, _settings.MaxForCurrentUnit());
+        // Whole numbers only (the live speed is fractional).
+        return Math.Min(Math.Round(start), _settings.MaxForCurrentUnit());
     }
 
     private void RunCycle(bool basic)
